@@ -51,6 +51,7 @@ int wrapper_fstat(uint8_t *mem, int fildes, uint32_t buf_addr);
 int wrapper_stat(uint8_t *mem, uint32_t pathname_addr, uint32_t buf_addr);
 int wrapper_ftruncate(uint8_t *mem, int fd, int length);
 int wrapper_truncate(uint8_t *mem, uint32_t pathname_addr, int length);
+uint32_t wrapper_memmove(uint8_t* mem, uint32_t dst_addr, uint32_t src_addr, uint32_t len);
 void wrapper_bcopy(uint8_t *mem, uint32_t src_addr, uint32_t dst_addr, uint32_t len);
 uint32_t wrapper_memcpy(uint8_t *mem, uint32_t dst_addr, uint32_t src_addr, uint32_t len);
 uint32_t wrapper_memccpy(uint8_t *mem, uint32_t dst_addr, uint32_t src_addr, int c, uint32_t len);

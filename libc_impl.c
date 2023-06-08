@@ -1297,8 +1297,15 @@ int wrapper_truncate(uint8_t* mem, uint32_t pathname_addr, int length) {
     return ret;
 }
 
-void wrapper_bcopy(uint8_t* mem, uint32_t src_addr, uint32_t dst_addr, uint32_t len) {
-    if (dst_addr % 4 == 0 && src_addr % 4 == 0 && len % 4 == 0) {
+uint32_t wrapper_memmove(uint8_t* mem, uint32_t dst_addr, uint32_t src_addr, uint32_t len) {
+    uint32_t ret = dst_addr;
+
+    // Nothing to do, return early
+    if ((len == 0) || (dst_addr == src_addr)) {
+        return ret;
+    }
+
+    if (((dst_addr % 4) == 0) && ((src_addr % 4) == 0) && ((len % 4) == 0)) {
         // Use memmove to copy regions that are 4-byte aligned.
         // This prevents the byte-swapped mem from causing issues when copying normally.
         // Memmove handles overlapping copies correctly, so overlap does not need to be checked.
@@ -1310,35 +1317,43 @@ void wrapper_bcopy(uint8_t* mem, uint32_t src_addr, uint32_t dst_addr, uint32_t 
         src_addr += len - 1;
         while (len--) {
             MEM_U8(dst_addr) = MEM_U8(src_addr);
-            --dst_addr;
-            --src_addr;
+            dst_addr--;
+            src_addr--;
         }
     } else {
         // Otherwise, perform a normal byte-swapped copy.
         while (len--) {
             MEM_U8(dst_addr) = MEM_U8(src_addr);
-            ++dst_addr;
-            ++src_addr;
+            dst_addr++;
+            src_addr++;
         }
     }
+    return ret;
 }
 
 /**
- * IRIX's memcpy seems to allow overlapping destination and source pointers, while the C standard dictates
- * both pointer should not overlap, (UB otherwise).
- * Because of this, we only use host bcopy since it can handle overlapping regions
+ * IRIX bcopy is identical to memmove with the arguments reordered appropriately and the return value ignored.
+ */
+void wrapper_bcopy(uint8_t* mem, uint32_t src_addr, uint32_t dst_addr, uint32_t len) {
+    wrapper_memmove(mem, dst_addr, src_addr, len);
+}
+
+/**
+ * IRIX's memcpy is an alias for memmove; this means it implicitly allows overlapping destination and source regions,
+ * while the C standard enforces defined behaviour only when these two regions do not overlap. We therefore also make 
+ * it a wrapper for memmove, allowing overlapping regions.
  */
 uint32_t wrapper_memcpy(uint8_t* mem, uint32_t dst_addr, uint32_t src_addr, uint32_t len) {
-    wrapper_bcopy(mem, src_addr, dst_addr, len);
-    return dst_addr;
+    return wrapper_memmove(mem, dst_addr, src_addr, len);
 }
 
 uint32_t wrapper_memccpy(uint8_t* mem, uint32_t dst_addr, uint32_t src_addr, int c, uint32_t len) {
     while (len--) {
         uint8_t ch = MEM_U8(src_addr);
+
         MEM_U8(dst_addr) = ch;
-        ++dst_addr;
-        ++src_addr;
+        dst_addr++;
+        src_addr++;
         if (ch == c) {
             return dst_addr;
         }
